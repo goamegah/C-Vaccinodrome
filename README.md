@@ -12,8 +12,12 @@ Le projet consiste à modéliser un vaccinodrome composé d’une salle d’atte
 (patients ou médecins) peuvent arriver à tout moment, et la vaccination (de durée fixée t) a lieu dès que possible. La fermeture du vaccinodrome empêche de nouvelles entrées de patients dans la salle d’attente (ou de médecin dans un box), mais les médecins présents continuent de vacciner tant que la salle n’est pas vide. Les acteurs sont tous représentés par des processus indépendants, et les seuls objets de synchronisation disponibles sont les sémaphores
 Nous avons choisi de résoudre ce problème de la façon suivante :
 
-    — la salle d’attente est vue comme un tampon circulaire borné contenant des sièges ;
-    — chaque patient est un producteur d’une seule unité dans ce tampon (lui-même assis sur un siège) ;
-    — chaque médecin consomme, de façon répétée, un patient assis dans le tampon pour le vacciner ;
-    — une vaccination est un rendez-vous entre médecin et patient, similaire à celui d’un coiffeur avec ses clients.
+— la salle d’attente est vue comme un tampon circulaire borné contenant des sièges 
+
+— chaque patient est un producteur d’une seule unité dans ce tampon (lui-même assis sur un siège)
+
+— chaque médecin consomme, de façon répétée, un patient assis dans le tampon pour le vacciner
+
+— une vaccination est un rendez-vous entre médecin et patient, similaire à celui d’un coiffeur avec ses clients.
+
 Notre projet suit exactement ces modèles : ce sont donc les médecins qui choisissent les patients. La fermeture du vaccinodrome utilise un mécanisme de patients factices (et dans certaines conditions de médecins factices) pour terminer proprement.
