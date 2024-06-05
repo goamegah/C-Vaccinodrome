@@ -21,3 +21,12 @@ Nous avons choisi de résoudre ce problème de la façon suivante :
 — une vaccination est un rendez-vous entre médecin et patient, similaire à celui d’un coiffeur avec ses clients.
 
 Notre projet suit exactement ces modèles : ce sont donc les médecins qui choisissent les patients. La fermeture du vaccinodrome utilise un mécanisme de patients factices (et dans certaines conditions de médecins factices) pour terminer proprement.
+
+
+# Structure de données
+## Structures de données partagées
+
+Le tableau suivant décrit tous les éléments présents dans une mémoire partagée par tous les processus. Les trois
+zones du segment de mémoire partagée (le bloc de contrôle ```ctl``` et les deux tableaux ```sgs``` et ```bxs```) sont stockées
+consécutivement dans la mémoire [1].
+
