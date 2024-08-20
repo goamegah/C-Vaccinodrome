@@ -1,3 +1,7 @@
+<h3 align="center">
+    <a href=""><img style="float: middle; padding: 10px 10px 10px 10px;" width="220" height="80" src="assets/unistra.png" /></a>
+</h3>
+
 # C-Vaccinodrome
 Implementation en C d'une modélisation d'un vaccinodrome composé d’une salle d’attente contenant n sièges pour les patients et d’un service de vaccination comportant m box occupés éventuellement par des médecins.
 
