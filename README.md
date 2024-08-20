@@ -177,3 +177,96 @@ Cette procédure d’information des médecins ne fonctionne que parce que nous 
 La procédure de fermeture dans son ensemble garantit que tous les verrous sont relâchés, que tous les messages envoyés sont reçus, et que tous les compteurs retrouvent leur valeur initiale. Les indices `sgprem` et `sgsuiv` ont
 également une valeur correcte ; si le segment de mémoire n’avait pas été détruit, il suffirait de redonner à `bxsuiv`
 la valeur 0 pour pouvoir à nouveau ouvrir le vaccinodrome, et accueillir de nouveaux patients et médecins.
+
+# Remarques sur l’implémentation
+Je suis satisfait de pouvoir dire que le code présenté dans ce rapport est exactement le code source de mon
+programme [6], auquel j’ai retiré les accolades ici. Je suis aussi satisfait d’avoir choisi le schéma de patients-producteurs et médecins-consommateurs dans un tampon borné circulaire : les patients sont traités dans leur
+ordre d’arrivée, les médecins peuvent chercher un patient pendant qu’un nouveau patient s’installe dans la salle
+d’attente, et il n’est jamais nécessaire de parcourir un tableau pour trouver un patient ou un médecin. Tout cela
+est aussi efficace (et simple à programmer) que possible.
+
+Je précise maintenant quelques points techniques évoqués dans le rapport sous la forme [X] :
+
+[1] La taille totale du segment est calculée par :
+
+```C
+sizeof (vaccinodrome_t) + n * sizeof (siege_t) + m * sizeof (box_t)
+```
+
+Théoriquement, il peut y avoir des problèmes d’alignement des données si la contrainte d’une zone est
+supérieure à celle de la précédente. Avant de créer le segment de mémoire partagée, le test suivant vérifie
+que les accès seront correctement alignés :
+
+```C
+if (_Alignof (siege_t) > _Alignof (vaccinodrome_t) ||
+_Alignof (box_t) > _Alignof (siege_t))
+...
+```
+
+et provoque une erreur si ce n’est pas le cas. (Sur mon système, toutes les structures doivent être alignées
+sur un multiple de 8 octets, et il n’y a donc aucun problème.)
+
+[2] La création du segment de mémoire partagée s’effectue avec un mode égal à zéro, qui est modifié après
+initialisation des sémaphores :
+
+```C
+fd = shm_open (VAX_NAME, O_CREAT|O_EXCL|O_RDWR, 0000); // + test
+... // ftruncate() + mmap() + initialisation du contenu
+fchmod (fd, 0600); // + test
+```
+
+Cette technique permet d’éviter les interférences avec d’autres processus pendant l’initialisation. Le mode
+0600 permet également d’éviter les éventuelles interférences avec les processus de mes camarades.
+
+[3] Les processus qui attachent le segment de mémoire partagée utilisent trois pointeurs pour accéder à son
+contenu. Voici leur initialisation :
+
+```C
+void * ma = mmap (...); // + test
+vaccinodrome_t * ctl = ma;
+siege_t * sgs = (siege_t *)(ctl + 1);
+box_t * bxs = (box_t *) (sgs + ctl->n);
+```
+
+C’est le seul endroit où l’on utilise l’arithmétique des pointeurs.
+
+[4] Le type nom_t, la constante nom_factice et le test nom_estfactice sont définis de la façon suivante :
+
+```C
+typedef struct { char nom [MAX_NOM+1]; } nom_t;
+#define nom_factice (nom_t){ .nom={ [0]=’\0’ } }
+#define nom_estfactice(pn) ((pn)->nom[0] == ’\0’)
+```
+
+L’avantage d’utiliser une structure est que C en autorise l’affectation (nom1=nom2). L’inconvénient est que
+la totalité du tableau est copiée, contrairement à ce que ferait la fonction `strcpy()` avec des tableaux
+directement. Mais dans notre cas, la constante MAX_NOM vaut 10, une telle structure occupe donc moins de
+deux mots. L’affectation de structures complètes est dans ce cas probablement plus efficace qu’une boucle
+quelconque qui ne copierait que les caractères utiles.
+
+[5] Le problème de l’accès aux sémaphores après que le processus de fermeture a appelé `sem_destroy()`
+pourrait être résolu par l’utilisation de sémaphores nommés, obtenus par `sem_open()`, parce que ceux-ci
+continuent d’exister tant qu’un processus les utilise, et leur destruction est prise en charge par le système
+d’exploitation. En remplaçant les sémaphores asem_t par des sémaphores nommés, on pourrait imaginer
+une fermeture qui s’arrête sereinement, alors même que des patients retardataires continuent d’entrer
+dans la salle d’attente pour la trouver fermée puis s’arrêter, et cela potentiellement assez longtemps. De
+même, l’acquittement exigé des médecins deviendrait inutile. Cette solution était impossible à mettre en
+œuvre dans ce projet.
+
+[6] Les opérations sur les sémaphores sont des macros du pré-processeur C :
+
+```C
+#define P(ps) CHECK (asem_wait (& (ps)))
+#define V(ps) CHECK (asem_post (& (ps)))
+```
+
+La macro CHECK a la définition habituelle.
+
+# Conclusion
+J’ai trouvé ce projet intéressant, surtout dans la phase de compréhension du sujet et de modélisation de la solu-
+tion. Son originalité s’est cependant évanouie quand j’ai compris qu’il s’agissait d’un schéma de producteurs et
+consommateurs dans un tampon borné circulaire (vu dans le cours et revu dans le TP 2) couplé à un mécanisme
+similaire au coiffeur (vu dans le TD 4). Il restait tout de même quelques détails à régler : le réveil d’un patient
+en section critique, la fermeture. Il est d’ailleurs ironique de constater que la fermeture du vaccinodrome est
+le mécanisme qui introduit le plus de complexité et le plus de code. Finalement, tous les tests s’exécutent avec
+succès, avec une marge de 5 ms « dans des conditions normales de température et de pression ».
